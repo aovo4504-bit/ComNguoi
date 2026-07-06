@@ -1,4 +1,13 @@
+-- ==========================================================
+-- 99 ĐÊM ULTIMATE HACK – BẢN FULL TÍNH NĂNG (XEON PC EDITION)
+-- Tất cả chức năng: ESP, Auto Farm, Kill Aura, Teleport,
+-- Auto Loot, Speed Hack, Infinite Jump, Noclip, Fullbright,
+-- Auto Heal, Auto Cook, Auto Fuel, Auto Reload, Auto Open Chest,
+-- Map Reveal, Instant Prompt, Auto Win, Bring Items, v.v.
+-- Sử dụng Rayfield UI. Đã tối ưu cho Xeon PC.
+-- ==========================================================
 
+-- Load Rayfield
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Players = game:GetService("Players")
@@ -72,7 +81,7 @@ local Features = {
 local Window = Rayfield:CreateWindow({
     Name = "99 ĐÊM ULTIMATE TOOL",
     LoadingTitle = "Loading...",
-    LoadingSubtitle = "Powered by Rayfield",
+    LoadingSubtitle = "Optimized for Xeon PC",
     ConfigurationTabs = {
         ["ESP"] = 165,
         ["Auto Farm"] = 50,
@@ -91,7 +100,7 @@ local TabMove = Window:CreateTab("Movement", 4483362458)
 local TabSurv = Window:CreateTab("Survival", 4483362458)
 local TabOther = Window:CreateTab("Others", 4483362458)
 
--- Hàm tạo toggle cho mỗi tab
+-- Hàm tạo toggle
 local function CreateToggle(tab, label, key, flag)
     tab:CreateToggle({
         Name = label,
@@ -634,11 +643,11 @@ RunService.Stepped:Connect(function()
     AutoCollectAllLoop()
 end)
 
--- Notification
+-- Thông báo
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "99 ĐÊM ULTIMATE",
-    Text = "Đã tải! Mở menu bằng lệnh Rayfield.",
+    Text = "Đã tải! Mở menu Rayfield để dùng.",
     Duration = 5
 })
 
-print("✅ 99 Đêm Ultimate with Rayfield UI loaded!")
+print("✅ 99 Đêm Ultimate Tool loaded! Press RightShift to open menu.")
