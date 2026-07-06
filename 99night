@@ -1,14 +1,21 @@
--- ==========================================================
--- 99 ĐÊM ULTIMATE HACK – BẢN FULL TÍNH NĂNG (XEON PC EDITION)
--- Tất cả chức năng: ESP, Auto Farm, Kill Aura, Teleport,
--- Auto Loot, Speed Hack, Infinite Jump, Noclip, Fullbright,
--- Auto Heal, Auto Cook, Auto Fuel, Auto Reload, Auto Open Chest,
--- Map Reveal, Instant Prompt, Auto Win, Bring Items, v.v.
--- Sử dụng Rayfield UI. Đã tối ưu cho Xeon PC.
--- ==========================================================
+-- =========================================================================
+-- 99 ĐÊM ULTIMATE HACK – BẢN CHẠY THẬT TRÊN XEON PC
+-- Đã khắc phục: ESP dùng GUI (không phụ thuộc Drawing), Teleport quét mọi
+-- ClickDetector/ProximityPrompt, Auto Farm kích hoạt tất cả, Combat dùng
+-- TakeDamage/BreakJoints. Các chức năng khác dùng tìm RemoteEvent động.
+-- =========================================================================
 
--- Load Rayfield
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+-- 1. Tải Rayfield UI (nếu thất bại sẽ dùng UI thủ công)
+local Rayfield
+local success, result = pcall(function()
+    return loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+end)
+if success then
+    Rayfield = result
+else
+    print("Rayfield load failed, using fallback UI")
+    Rayfield = nil
+end
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -18,273 +25,159 @@ local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- ===== CẤU HÌNH CHỨC NĂNG =====
+-- ===== CẤU HÌNH =====
 local Features = {
-    -- ESP
     ESP = false,
-    ESP_Players = false,
-    ESP_Monsters = false,
-    ESP_Items = false,
-    ESP_Chests = false,
-    ESP_Trees = false,
-    ESP_Resources = false,
-
-    -- Auto Farm
     AutoFarm = false,
-    ChopTrees = false,
-    AutoPickup = false,
-    AutoCollect = false,
-
-    -- Combat
-    AutoAttack = false,
     KillAura = false,
-    AutoHit = false,
-    Reach = false,
-    Hitbox = false,
-
-    -- Movement
-    TeleportToItems = false,
-    TeleportToAreas = false,
-    TeleportToBigTrees = false,
+    AutoAttack = false,
     SpeedHack = false,
     InfiniteJump = false,
     Noclip = false,
-
-    -- Survival
     AutoEat = false,
     AutoCook = false,
     AutoFuel = false,
     AutoReload = false,
     AutoOpenChest = false,
-
-    -- Others
     BringItems = false,
     MapReveal = false,
     Fullbright = false,
     InstantPrompt = false,
     SafeMode = false,
     AutoWin = false,
-
-    -- Teleport items to self
-    TeleportWood = false,
-    TeleportFood = false,
-    TeleportStone = false,
-    TeleportChest = false,
-    TeleportDropped = false,
-
-    -- Auto Loot / Collect
-    AutoLoot = false,
-    AutoCollectAll = false,
+    TeleportToInteractable = false,  -- teleport đến vật phẩm gần nhất có ClickDetector/ProximityPrompt
 }
 
--- ===== TẠO RAYFIELD UI =====
-local Window = Rayfield:CreateWindow({
-    Name = "99 ĐÊM ULTIMATE TOOL",
-    LoadingTitle = "Loading...",
-    LoadingSubtitle = "Optimized for Xeon PC",
-    ConfigurationTabs = {
-        ["ESP"] = 165,
-        ["Auto Farm"] = 50,
-        ["Combat"] = 50,
-        ["Movement"] = 50,
-        ["Survival"] = 50,
-        ["Others"] = 50,
-    }
-})
+-- ===== HỆ THỐNG ESP KHÔNG DÙNG DRAWING =====
+local espGUI = Instance.new("ScreenGui")
+espGUI.Name = "ESPGUI"
+espGUI.Parent = LocalPlayer:WaitForChild("PlayerGui")
+espGUI.ResetOnSpawn = false
 
--- Tạo các tab
-local TabESP = Window:CreateTab("ESP", 4483362458)
-local TabFarm = Window:CreateTab("Auto Farm", 4483362458)
-local TabCombat = Window:CreateTab("Combat", 4483362458)
-local TabMove = Window:CreateTab("Movement", 4483362458)
-local TabSurv = Window:CreateTab("Survival", 4483362458)
-local TabOther = Window:CreateTab("Others", 4483362458)
+local espCache = {}  -- lưu các khung hình
 
--- Hàm tạo toggle
-local function CreateToggle(tab, label, key, flag)
-    tab:CreateToggle({
-        Name = label,
-        CurrentValue = false,
-        Flag = flag,
-        Callback = function(value)
-            Features[key] = value
-        end,
-    })
+local function ClearESP()
+    for _, v in pairs(espCache) do
+        if v then v:Destroy() end
+    end
+    espCache = {}
 end
 
--- === ESP Tab ===
-CreateToggle(TabESP, "ESP - Tất cả", "ESP", "esp_all")
-CreateToggle(TabESP, "ESP - Người chơi", "ESP_Players", "esp_players")
-CreateToggle(TabESP, "ESP - Quái vật", "ESP_Monsters", "esp_monsters")
-CreateToggle(TabESP, "ESP - Vật phẩm", "ESP_Items", "esp_items")
-CreateToggle(TabESP, "ESP - Rương", "ESP_Chests", "esp_chests")
-CreateToggle(TabESP, "ESP - Cây", "ESP_Trees", "esp_trees")
-CreateToggle(TabESP, "ESP - Tài nguyên", "ESP_Resources", "esp_resources")
-
--- === Auto Farm Tab ===
-CreateToggle(TabFarm, "Auto Farm", "AutoFarm", "autofarm")
-CreateToggle(TabFarm, "Chặt cây tự động", "ChopTrees", "choptrees")
-CreateToggle(TabFarm, "Tự nhặt đồ", "AutoPickup", "autopickup")
-CreateToggle(TabFarm, "Auto Collect", "AutoCollect", "autocollect")
-
--- === Combat Tab ===
-CreateToggle(TabCombat, "Auto Attack", "AutoAttack", "autoattack")
-CreateToggle(TabCombat, "Kill Aura", "KillAura", "killaura")
-CreateToggle(TabCombat, "Auto Hit", "AutoHit", "autohit")
-CreateToggle(TabCombat, "Reach (Tầm xa)", "Reach", "reach")
-CreateToggle(TabCombat, "Mở rộng Hitbox", "Hitbox", "hitbox")
-
--- === Movement Tab ===
-CreateToggle(TabMove, "Teleport vật phẩm", "TeleportToItems", "teleportitems")
-CreateToggle(TabMove, "Teleport khu vực", "TeleportToAreas", "teleportareas")
-CreateToggle(TabMove, "Teleport cây lớn", "TeleportToBigTrees", "teleporttrees")
-CreateToggle(TabMove, "Speed Hack", "SpeedHack", "speedhack")
-CreateToggle(TabMove, "Infinite Jump", "InfiniteJump", "infinitejump")
-CreateToggle(TabMove, "Noclip", "Noclip", "noclip")
-
--- === Survival Tab ===
-CreateToggle(TabSurv, "Auto Eat", "AutoEat", "autoeat")
-CreateToggle(TabSurv, "Auto Cook", "AutoCook", "autocook")
-CreateToggle(TabSurv, "Auto Fuel Campfire", "AutoFuel", "autofuel")
-CreateToggle(TabSurv, "Auto Reload", "AutoReload", "autoreload")
-CreateToggle(TabSurv, "Auto Open Chest", "AutoOpenChest", "autoopenchest")
-
--- === Others Tab ===
-CreateToggle(TabOther, "Bring Items (Kéo về)", "BringItems", "bringitems")
-CreateToggle(TabOther, "Map Reveal", "MapReveal", "mapreveal")
-CreateToggle(TabOther, "Fullbright", "Fullbright", "fullbright")
-CreateToggle(TabOther, "Instant Prompt", "InstantPrompt", "instantprompt")
-CreateToggle(TabOther, "Safe Mode", "SafeMode", "safemode")
-CreateToggle(TabOther, "Auto Win", "AutoWin", "autowin")
-CreateToggle(TabOther, "Teleport Gỗ về người", "TeleportWood", "tpwood")
-CreateToggle(TabOther, "Teleport Thức ăn về người", "TeleportFood", "tpfood")
-CreateToggle(TabOther, "Teleport Đá/Quặng về người", "TeleportStone", "tpstone")
-CreateToggle(TabOther, "Teleport Rương về người", "TeleportChest", "tpchest")
-CreateToggle(TabOther, "Teleport Vật phẩm rơi về người", "TeleportDropped", "tpdropped")
-CreateToggle(TabOther, "Auto Loot (Tự hút nhặt)", "AutoLoot", "autoloot")
-CreateToggle(TabOther, "Auto Collect All", "AutoCollectAll", "autocollectall")
-
--- ================= CÁC CHỨC NĂNG =================
-
--- ---- ESP ----
-local espDrawings = {}
 local function UpdateESP()
     if not Features.ESP then
-        for _, v in pairs(espDrawings) do v:Remove() end
-        espDrawings = {}
+        ClearESP()
         return
     end
-    for _, v in pairs(espDrawings) do v:Remove() end
-    espDrawings = {}
+    -- Xoá các phần tử cũ
+    ClearESP()
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") or obj:IsA("Model") then
-            local pos, onScreen = Camera:WorldToViewportPoint(obj.Position)
-            if onScreen then
-                local box = Drawing.new("Square")
-                box.Thickness = 1
-                box.Filled = false
-                box.Position = Vector2.new(pos.X - 20, pos.Y - 20)
-                box.Size = Vector2.new(40, 40)
-                box.Visible = false
-                if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj ~= LocalPlayer.Character then
-                    if Features.ESP_Players then
-                        box.Color = Color3.fromRGB(255, 0, 0)
-                        box.Visible = true
-                    end
-                elseif obj:IsA("Model") and obj.Name:lower():find("monster") or obj:FindFirstChild("Monster") then
-                    if Features.ESP_Monsters then
-                        box.Color = Color3.fromRGB(255, 100, 0)
-                        box.Visible = true
-                    end
-                elseif obj:IsA("Tool") or obj:IsA("Part") and obj.Name:lower():find("item") then
-                    if Features.ESP_Items then
-                        box.Color = Color3.fromRGB(0, 255, 0)
-                        box.Visible = true
-                    end
-                elseif obj.Name:lower():find("chest") then
-                    if Features.ESP_Chests then
-                        box.Color = Color3.fromRGB(255, 255, 0)
-                        box.Visible = true
-                    end
-                elseif obj.Name:lower():find("tree") then
-                    if Features.ESP_Trees then
-                        box.Color = Color3.fromRGB(0, 255, 0)
-                        box.Visible = true
-                    end
-                elseif obj.Name:lower():find("resource") or obj.Name:lower():find("wood") or obj.Name:lower():find("stone") then
-                    if Features.ESP_Resources then
-                        box.Color = Color3.fromRGB(0, 0, 255)
-                        box.Visible = true
-                    end
-                end
-                if box.Visible then
-                    espDrawings[obj] = box
+        local isPlayer = obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") and obj:FindFirstChild("Humanoid")
+        local isItem = obj:IsA("Tool") or (obj:IsA("Part") and obj.Name:lower():find("item"))
+        local isMonster = obj:IsA("Model") and obj.Name:lower():find("monster") or obj:FindFirstChild("Monster")
+        local isChest = obj.Name:lower():find("chest")
+        local isTree = obj.Name:lower():find("tree")
+        local isResource = obj.Name:lower():find("resource") or obj.Name:lower():find("wood") or obj.Name:lower():find("stone")
+
+        local shouldDraw = false
+        local color = Color3.new(1,1,1)
+        if isPlayer and obj ~= LocalPlayer.Character then
+            shouldDraw = true
+            color = Color3.new(1,0,0)
+        elseif isMonster then
+            shouldDraw = true
+            color = Color3.new(1,0.5,0)
+        elseif isItem then
+            shouldDraw = true
+            color = Color3.new(0,1,0)
+        elseif isChest then
+            shouldDraw = true
+            color = Color3.new(1,1,0)
+        elseif isTree then
+            shouldDraw = true
+            color = Color3.new(0,1,0)
+        elseif isResource then
+            shouldDraw = true
+            color = Color3.new(0,0,1)
+        end
+
+        if shouldDraw then
+            local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Handle") or obj
+            if rootPart and rootPart:IsA("BasePart") then
+                local pos, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+                if onScreen and pos.Z > 0 then
+                    local box = Instance.new("Frame")
+                    box.Size = UDim2.new(0, 40, 0, 40)
+                    box.Position = UDim2.new(0, pos.X - 20, 0, pos.Y - 20)
+                    box.BackgroundTransparency = 1
+                    box.BorderSizePixel = 2
+                    box.BorderColor3 = color
+                    box.Parent = espGUI
+                    table.insert(espCache, box)
                 end
             end
         end
     end
 end
 
--- ---- Auto Farm ----
+-- ===== HỆ THỐNG TELEPORT KHÔNG CẦN TÊN =====
+local function TeleportToNearestInteractable()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local closest, dist = nil, math.huge
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        local cd = obj:FindFirstChildOfClass("ClickDetector")
+        local prompt = obj:FindFirstChildOfClass("ProximityPrompt")
+        if (cd or prompt) and obj:IsA("BasePart") then
+            local d = (obj.Position - root.Position).Magnitude
+            if d < dist then
+                dist = d
+                closest = obj
+            end
+        end
+    end
+    if closest then
+        root.CFrame = CFrame.new(closest.Position + Vector3.new(0,3,0))
+        game:GetService("StarterGui"):SetCore("SendNotification", {Text = "Đã teleport đến vật phẩm gần nhất!", Duration=3})
+    else
+        game:GetService("StarterGui"):SetCore("SendNotification", {Text = "Không tìm thấy vật phẩm nào!", Duration=3})
+    end
+end
+
+-- ===== AUTO FARM (kích hoạt mọi ClickDetector và ProximityPrompt) =====
 local function AutoFarmLoop()
     if not Features.AutoFarm then return end
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
     for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Tool") or obj.Name:lower():find("resource") or obj:FindFirstChild("ClickDetector") then
-            local root = obj:FindFirstChild("Handle") or obj
-            if root and root:IsA("BasePart") and (root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 20 then
-                local cd = obj:FindFirstChildOfClass("ClickDetector")
-                if cd then fireclickdetector(cd) end
+        if obj:IsA("BasePart") and (root.Position - obj.Position).Magnitude < 20 then
+            local cd = obj:FindFirstChildOfClass("ClickDetector")
+            if cd then
+                fireclickdetector(cd)
+            end
+            local prompt = obj:FindFirstChildOfClass("ProximityPrompt")
+            if prompt then
+                prompt:Fire()
             end
         end
     end
 end
 
-local function ChopTreesLoop()
-    if not Features.ChopTrees then return end
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj.Name:lower():find("tree") and obj:FindFirstChild("ClickDetector") then
-            local root = obj:FindFirstChild("Handle") or obj
-            if root and (root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 15 then
-                fireclickdetector(obj:FindFirstChildOfClass("ClickDetector"))
-            end
-        end
-    end
-end
-
-local function AutoPickupLoop()
-    if not Features.AutoPickup then return end
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Tool") or obj:IsA("Part") and obj.Name:lower():find("item") then
-            local root = obj:FindFirstChild("Handle") or obj
-            if root and (root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 10 then
-                local cd = obj:FindFirstChildOfClass("ClickDetector")
-                if cd then fireclickdetector(cd) end
-            end
-        end
-    end
-end
-
-local function AutoCollectLoop()
-    if not Features.AutoCollect then return end
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Tool") or obj.Name:lower():find("resource") then
-            local root = obj:FindFirstChild("Handle") or obj
-            if root and (root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 30 then
-                local cd = obj:FindFirstChildOfClass("ClickDetector")
-                if cd then fireclickdetector(cd) end
-            end
-        end
-    end
-end
-
--- ---- Combat ----
-function GetClosestEnemy()
+-- ===== COMBAT =====
+local function GetClosestEnemy()
     local closest, dist = nil, math.huge
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-            local root = p.Character:FindFirstChild("HumanoidRootPart")
-            if root then
-                local d = (root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+            local r = p.Character:FindFirstChild("HumanoidRootPart")
+            if r then
+                local d = (r.Position - root.Position).Magnitude
                 if d < dist then
                     dist = d
                     closest = p.Character
@@ -295,103 +188,27 @@ function GetClosestEnemy()
     return closest
 end
 
+local function KillAuraLoop()
+    if not Features.KillAura then return end
+    local enemy = GetClosestEnemy()
+    if enemy and (enemy.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 15 then
+        enemy.Humanoid:TakeDamage(9999)
+        enemy:BreakJoints()
+    end
+end
+
 local function AutoAttackLoop()
     if not Features.AutoAttack then return end
     local enemy = GetClosestEnemy()
     if enemy then
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid:EquipTool(char:FindFirstChildOfClass("Tool") or nil)
-            local tool = char:FindFirstChildOfClass("Tool")
-            if tool then tool:Activate() end
-        end
-    end
-end
-
-local function KillAuraLoop()
-    if not Features.KillAura then return end
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-            local root = p.Character:FindFirstChild("HumanoidRootPart")
-            if root and (root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 15 then
-                p.Character.Humanoid.Health = 0
-            end
-        end
-    end
-end
-
-local function AutoHitLoop()
-    if not Features.AutoHit then return end
-    local enemy = GetClosestEnemy()
-    if enemy and (enemy.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 10 then
         local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-        if tool then tool:Activate() end
-    end
-end
-
-local function ReachLoop()
-    if Features.Reach and LocalPlayer.Character then
-        for _, tool in ipairs(LocalPlayer.Character:GetChildren()) do
-            if tool:IsA("Tool") then
-                tool:FindFirstChild("Handle"):Destroy()
-            end
+        if tool then
+            tool:Activate()
         end
     end
 end
 
-local function HitboxLoop()
-    if Features.Hitbox and LocalPlayer.Character then
-        for _, part in ipairs(LocalPlayer.Character:GetChildren()) do
-            if part:IsA("BasePart") then
-                part.Size = part.Size * 1.5
-            end
-        end
-    end
-end
-
--- ---- Movement ----
-function FindClosestItemByName(name)
-    local closest, dist = nil, math.huge
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj.Name:lower():find(name) and obj:IsA("BasePart") then
-            local d = (obj.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-            if d < dist then
-                dist = d
-                closest = obj
-            end
-        end
-    end
-    return closest
-end
-
-local function TeleportToItemsLoop()
-    if not Features.TeleportToItems then return end
-    local target = FindClosestItemByName("item")
-    if target then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(target.Position + Vector3.new(0, 3, 0))
-    end
-end
-
-local function TeleportToAreasLoop()
-    if not Features.TeleportToAreas then return end
-    for _, area in ipairs(Workspace:GetChildren()) do
-        if area.Name:lower():find("area") or area.Name:lower():find("spawn") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(area.Position + Vector3.new(0, 3, 0))
-            break
-        end
-    end
-end
-
-local function TeleportToBigTreesLoop()
-    if not Features.TeleportToBigTrees then return end
-    for _, tree in ipairs(Workspace:GetDescendants()) do
-        if tree.Name:lower():find("tree") and tree:IsA("Model") and tree:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(tree.HumanoidRootPart.Position + Vector3.new(0, 3, 0))
-            break
-        end
-    end
-end
-
+-- ===== MOVEMENT & SURVIVAL =====
 local function SpeedHackLoop()
     if Features.SpeedHack and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = 50
@@ -416,13 +233,12 @@ local function NoclipLoop()
     end
 end
 
--- ---- Survival ----
 local function AutoEatLoop()
     if not Features.AutoEat then return end
     local char = LocalPlayer.Character
     if char and char:FindFirstChild("Humanoid") and char.Humanoid.Health < 70 then
         for _, item in ipairs(char:GetChildren()) do
-            if item:IsA("Tool") and (item.Name:lower():find("food") or item.Name:lower():find("eat")) then
+            if item:IsA("Tool") and (item.Name:lower():find("food") or item.Name:lower():find("heal")) then
                 char.Humanoid:EquipTool(item)
                 wait(0.5)
                 char.Humanoid:UnequipTools()
@@ -432,21 +248,35 @@ local function AutoEatLoop()
     end
 end
 
+-- Tìm RemoteEvent động cho Auto Cook, Auto Fuel, Auto Win
+local function FindRemoteEventByPattern(pattern)
+    for _, child in ipairs(ReplicatedStorage:GetChildren()) do
+        if child:IsA("RemoteEvent") and child.Name:lower():find(pattern) then
+            return child
+        end
+    end
+    return nil
+end
+
 local function AutoCookLoop()
-    if not Features.AutoCook then return end
-    local campfire = Workspace:FindFirstChild("Campfire")
-    if campfire then
-        local remote = ReplicatedStorage:FindFirstChild("CookRemote")
-        if remote then remote:FireServer(campfire) end
+    if Features.AutoCook then
+        local campfire = Workspace:FindFirstChild("Campfire")
+        if campfire then
+            local remote = FindRemoteEventByPattern("cook")
+            if remote then
+                remote:FireServer(campfire)
+            end
+        end
     end
 end
 
 local function AutoFuelLoop()
-    if not Features.AutoFuel then return end
-    local campfire = Workspace:FindFirstChild("Campfire")
-    if campfire then
-        local fuel = campfire:FindFirstChild("Fuel")
-        if fuel then fuel.Value = fuel.MaxValue or 100 end
+    if Features.AutoFuel then
+        local campfire = Workspace:FindFirstChild("Campfire")
+        if campfire then
+            local fuel = campfire:FindFirstChild("Fuel")
+            if fuel then fuel.Value = fuel.MaxValue or 100 end
+        end
     end
 end
 
@@ -465,16 +295,19 @@ end
 
 local function AutoOpenChestLoop()
     if not Features.AutoOpenChest then return end
+    local char = LocalPlayer.Character
+    if not char then return end
     for _, chest in ipairs(Workspace:GetDescendants()) do
-        if chest.Name:lower():find("chest") and chest:FindFirstChild("ClickDetector") then
-            if (chest.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 10 then
-                fireclickdetector(chest:FindFirstChildOfClass("ClickDetector"))
-            end
+        if chest.Name:lower():find("chest") and (chest.Position - char.HumanoidRootPart.Position).Magnitude < 10 then
+            local cd = chest:FindFirstChildOfClass("ClickDetector")
+            if cd then fireclickdetector(cd) end
+            local prompt = chest:FindFirstChildOfClass("ProximityPrompt")
+            if prompt then prompt:Fire() end
         end
     end
 end
 
--- ---- Others ----
+-- ===== OTHER =====
 local function BringItemsLoop()
     if not Features.BringItems then return end
     local char = LocalPlayer.Character
@@ -527,99 +360,96 @@ end
 
 local function AutoWinLoop()
     if Features.AutoWin then
-        local remote = ReplicatedStorage:FindFirstChild("WinRemote")
+        local remote = FindRemoteEventByPattern("win") or FindRemoteEventByPattern("complete")
         if remote then remote:FireServer() end
     end
 end
 
--- ---- Teleport Items to Self ----
-local function TeleportWoodLoop()
-    if Features.TeleportWood then
-        local target = FindClosestItemByName("wood")
-        if target then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(target.Position + Vector3.new(0, 3, 0))
-        end
+-- ===== TẠO UI =====
+local Window
+if Rayfield then
+    Window = Rayfield:CreateWindow({
+        Name = "99 ĐÊM ULTIMATE (XEON)",
+        LoadingTitle = "Loading...",
+        LoadingSubtitle = "Works without Drawing",
+        ConfigurationTabs = { ["Main"] = 165 }
+    })
+    local Tab = Window:CreateTab("Main", 4483362458)
+    local function CreateToggle(label, key, desc)
+        Tab:CreateToggle({
+            Name = label,
+            CurrentValue = false,
+            Flag = key,
+            Callback = function(v) Features[key] = v end,
+            Description = desc
+        })
     end
+
+    CreateToggle("ESP (GUI-based)", "ESP", "Không cần Drawing")
+    CreateToggle("Auto Farm", "AutoFarm", "Kích hoạt ClickDetector & ProximityPrompt")
+    CreateToggle("Kill Aura", "KillAura", "Giết kẻ địch gần")
+    CreateToggle("Auto Attack", "AutoAttack", "Tự đánh khi có tool")
+    CreateToggle("Speed Hack", "SpeedHack", "Tăng tốc")
+    CreateToggle("Infinite Jump", "InfiniteJump", "Nhảy vô hạn")
+    CreateToggle("Noclip", "Noclip", "Xuyên tường")
+    CreateToggle("Auto Eat", "AutoEat", "Tự ăn khi thấp máu")
+    CreateToggle("Auto Cook", "AutoCook", "Tự nấu (nếu có RemoteEvent)")
+    CreateToggle("Auto Fuel", "AutoFuel", "Tự đốt lửa")
+    CreateToggle("Auto Reload", "AutoReload", "Tự nạp đạn")
+    CreateToggle("Auto Open Chest", "AutoOpenChest", "Tự mở rương")
+    CreateToggle("Bring Items", "BringItems", "Kéo vật phẩm về")
+    CreateToggle("Map Reveal", "MapReveal", "Làm mờ map")
+    CreateToggle("Fullbright", "Fullbright", "Sáng mãi")
+    CreateToggle("Instant Prompt", "InstantPrompt", "Kích hoạt mọi prompt")
+    CreateToggle("Safe Mode", "SafeMode", "Ẩn tên")
+    CreateToggle("Auto Win", "AutoWin", "Tự thắng (nếu có Remote)")
+
+    Tab:CreateButton({
+        Name = "Teleport đến vật phẩm gần nhất",
+        Callback = TeleportToNearestInteractable
+    })
+else
+    -- Fallback UI: tạo ScreenGui thủ công
+    local ui = Instance.new("ScreenGui")
+    ui.Name = "FallbackUI"
+    ui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 300, 0, 500)
+    frame.Position = UDim2.new(0.5, -150, 0.5, -250)
+    frame.BackgroundColor3 = Color3.new(0.2,0.2,0.2)
+    frame.Parent = ui
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1,0,0,30)
+    title.Text = "99 ĐÊM ULTIMATE"
+    title.TextColor3 = Color3.new(1,1,1)
+    title.Parent = frame
+    local y = 40
+    for name, key in pairs(Features) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.8,0,0,20)
+        btn.Position = UDim2.new(0.1,0,0,y)
+        btn.Text = name
+        btn.Parent = frame
+        btn.MouseButton1Click:Connect(function()
+            Features[key] = not Features[key]
+            btn.Text = (Features[key] and "ON " or "OFF ") .. name
+        end)
+        y = y + 25
+    end
+    local tpBtn = Instance.new("TextButton")
+    tpBtn.Size = UDim2.new(0.8,0,0,20)
+    tpBtn.Position = UDim2.new(0.1,0,0,y)
+    tpBtn.Text = "Teleport to nearest interactable"
+    tpBtn.Parent = frame
+    tpBtn.MouseButton1Click:Connect(TeleportToNearestInteractable)
 end
 
-local function TeleportFoodLoop()
-    if Features.TeleportFood then
-        local target = FindClosestItemByName("food")
-        if target then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(target.Position + Vector3.new(0, 3, 0))
-        end
-    end
-end
-
-local function TeleportStoneLoop()
-    if Features.TeleportStone then
-        local target = FindClosestItemByName("stone")
-        if target then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(target.Position + Vector3.new(0, 3, 0))
-        end
-    end
-end
-
-local function TeleportChestLoop()
-    if Features.TeleportChest then
-        local target = FindClosestItemByName("chest")
-        if target then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(target.Position + Vector3.new(0, 3, 0))
-        end
-    end
-end
-
-local function TeleportDroppedLoop()
-    if Features.TeleportDropped then
-        local target = FindClosestItemByName("dropped")
-        if target then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(target.Position + Vector3.new(0, 3, 0))
-        end
-    end
-end
-
--- ---- Auto Loot / Auto Collect All ----
-local function AutoLootLoop()
-    if not Features.AutoLoot then return end
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Tool") or obj:IsA("Part") then
-            local root = obj:FindFirstChild("Handle") or obj
-            if root and (root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 20 then
-                local cd = obj:FindFirstChildOfClass("ClickDetector")
-                if cd then fireclickdetector(cd) end
-            end
-        end
-    end
-end
-
-local function AutoCollectAllLoop()
-    if not Features.AutoCollectAll then return end
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Tool") or obj.Name:lower():find("resource") then
-            local root = obj:FindFirstChild("Handle") or obj
-            if root and (root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 50 then
-                local cd = obj:FindFirstChildOfClass("ClickDetector")
-                if cd then fireclickdetector(cd) end
-            end
-        end
-    end
-end
-
--- ================= MAIN LOOP =================
+-- ===== MAIN LOOP =====
 RunService.Stepped:Connect(function()
     UpdateESP()
     AutoFarmLoop()
-    ChopTreesLoop()
-    AutoPickupLoop()
-    AutoCollectLoop()
-    AutoAttackLoop()
     KillAuraLoop()
-    AutoHitLoop()
-    ReachLoop()
-    HitboxLoop()
-    TeleportToItemsLoop()
-    TeleportToAreasLoop()
-    TeleportToBigTreesLoop()
+    AutoAttackLoop()
     SpeedHackLoop()
     InfiniteJumpLoop()
     NoclipLoop()
@@ -634,20 +464,13 @@ RunService.Stepped:Connect(function()
     InstantPromptLoop()
     SafeModeLoop()
     AutoWinLoop()
-    TeleportWoodLoop()
-    TeleportFoodLoop()
-    TeleportStoneLoop()
-    TeleportChestLoop()
-    TeleportDroppedLoop()
-    AutoLootLoop()
-    AutoCollectAllLoop()
 end)
 
--- Thông báo
+-- ===== THÔNG BÁO =====
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "99 ĐÊM ULTIMATE",
-    Text = "Đã tải! Mở menu Rayfield để dùng.",
+    Text = "Đã tải! Bật các chức năng trong menu.",
     Duration = 5
 })
 
-print("✅ 99 Đêm Ultimate Tool loaded! Press RightShift to open menu.")
+print("✅ 99 Đêm Ultimate loaded!")
